@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../../services/supabase';
@@ -42,7 +43,7 @@ const StudentDashboardPage: React.FC = () => {
             .order('is_pinned', { ascending: false })
             .order('created_at', { ascending: false })
             .limit(3);
-        if (annError) console.error(annError);
+        if (annError) console.error("Error fetching announcements:", annError.message);
         else setAnnouncements(annData);
 
         // Fetch active polls
@@ -51,7 +52,7 @@ const StudentDashboardPage: React.FC = () => {
             .select('*')
             .eq('is_active', true)
             .order('created_at', { ascending: false });
-        if (pollError) console.error(pollError);
+        if (pollError) console.error("Error fetching polls:", pollError.message);
         else setPolls(pollData);
 
         // Fetch latest 3 files
@@ -60,7 +61,7 @@ const StudentDashboardPage: React.FC = () => {
             .select('*')
             .order('created_at', { ascending: false })
             .limit(3);
-        if (filesError) console.error(filesError);
+        if (filesError) console.error("Error fetching files:", filesError.message);
         else setLatestFiles(filesData);
 
 

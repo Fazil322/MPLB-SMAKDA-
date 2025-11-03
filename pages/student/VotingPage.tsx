@@ -1,4 +1,6 @@
 
+
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../services/supabase';
 import { Poll, Vote } from '../../types';
@@ -22,7 +24,7 @@ const StudentVotingPage: React.FC = () => {
             .select('*, poll_options(*)')
             .order('created_at', { ascending: false });
         
-        if (pollsError) console.error('Error fetching polls:', pollsError);
+        if (pollsError) console.error('Error fetching polls:', pollsError.message);
         else setPolls(pollsData || []);
 
         // Fetch user's votes to see what they've already voted on
@@ -30,7 +32,7 @@ const StudentVotingPage: React.FC = () => {
             .from('votes')
             .select('*');
         
-        if (votesError) console.error('Error fetching user votes:', votesError);
+        if (votesError) console.error('Error fetching user votes:', votesError.message);
         else setUserVotes(votesData || []);
 
         setLoading(false);
@@ -43,8 +45,12 @@ const StudentVotingPage: React.FC = () => {
     const handleVote = async (optionId: string) => {
         const { data, error } = await supabase.rpc('handle_vote', { option_id_to_vote: optionId });
         if (error) {
-            console.error('Error voting:', error);
-            toast.error("Gagal memberikan suara.");
+            console.error('Error voting:', error.message);
+            if (error.message.includes('Could not find the function')) {
+                toast.error("Fungsi 'handle_vote' tidak ditemukan di database. Admin perlu menjalankan skrip SQL dari 'services/supabase.ts' (Bagian 4).", { duration: 8000 });
+            } else {
+                toast.error("Gagal memberikan suara.");
+            }
         } else {
             if (data.includes('Error')) {
                 toast.error(data.replace('Error: ', ''));

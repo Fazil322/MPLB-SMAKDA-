@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../services/supabase';
 import { Announcement } from '../../types';
@@ -20,7 +21,7 @@ const StudentAnnouncementsPage: React.FC = () => {
         setLoading(true);
         const { data, error } = await supabase.from('announcements').select('*').order('is_pinned', { ascending: false }).order('created_at', { ascending: false });
         if (error) {
-            console.error('Error fetching announcements:', error);
+            console.error('Error fetching announcements:', error.message);
         } else {
             setAnnouncements(data);
         }

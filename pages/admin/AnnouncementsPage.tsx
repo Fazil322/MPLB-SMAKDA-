@@ -59,7 +59,7 @@ const AdminAnnouncementsPage: React.FC = () => {
         setLoading(true);
         const { data, error } = await supabase.from('announcements').select('*').order('is_pinned', { ascending: false }).order('created_at', { ascending: false });
         if (error) {
-            console.error('Error fetching announcements:', error);
+            console.error('Error fetching announcements:', error.message);
             toast.error("Gagal memuat pengumuman.");
         } else {
             setAnnouncements(data);

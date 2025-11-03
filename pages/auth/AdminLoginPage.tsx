@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../../services/supabase';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Card, CardContent, CardHeader } from '../../components/ui/Card';
+import { useAuth } from '../../App';
+import { Spinner } from '../../components/ui/Spinner';
 
 const AdminLoginPage: React.FC = () => {
+  const { loading: authLoading } = useAuth();
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -16,7 +19,6 @@ const AdminLoginPage: React.FC = () => {
     setIsLoading(true);
     setError(null);
 
-    // Periksa apakah kode benar
     if (code !== 'MPLB') {
         setError('Kode akses admin salah.');
         setIsLoading(false);
@@ -24,11 +26,8 @@ const AdminLoginPage: React.FC = () => {
     }
 
     try {
-      // CATATAN: Untuk implementasi ini, kami menggunakan akun admin khusus.
-      // Dalam skenario dunia nyata, kredensial ini harus disimpan dengan aman
-      // di variabel lingkungan dan logika login mungkin ditangani di sisi server.
       const adminEmail = 'admin.mplbhub@smklppmri2.sch.id';
-      const adminPassword = 'password-mplb-aman'; // Ini harus berupa password yang kuat.
+      const adminPassword = 'password-mplb-aman';
 
       const { error: signInError } = await supabase.auth.signInWithPassword({ 
           email: adminEmail, 
@@ -36,12 +35,10 @@ const AdminLoginPage: React.FC = () => {
         });
       
       if (signInError) {
-          // Ini mungkin terjadi jika akun admin khusus tidak ada atau passwordnya salah
-          throw new Error('Gagal mengotentikasi akun admin. Hubungi developer.');
+          throw new Error('Gagal mengotentikasi akun admin. Pastikan akun sudah dibuat.');
       }
 
-      // Setelah login berhasil, router utama akan mengarahkan berdasarkan peran.
-      navigate('/');
+      navigate('/', { replace: true });
 
     } catch (error: any) {
       setError(error.message || 'Terjadi kesalahan saat login.');
@@ -49,6 +46,10 @@ const AdminLoginPage: React.FC = () => {
       setIsLoading(false);
     }
   };
+  
+  if (authLoading) {
+    return <div className="h-screen w-screen flex items-center justify-center bg-slate-100"><Spinner /></div>;
+  }
 
   return (
     <div 
@@ -85,6 +86,14 @@ const AdminLoginPage: React.FC = () => {
               {isLoading ? 'Memvalidasi...' : 'Login Admin'}
             </Button>
           </form>
+           <p className="text-center text-xs text-gray-400 mt-4">
+            <Link
+              to="/login"
+              className="hover:underline"
+            >
+              Masuk sebagai Siswa
+            </Link>
+          </p>
         </CardContent>
       </Card>
        <style>{`

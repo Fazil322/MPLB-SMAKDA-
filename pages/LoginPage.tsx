@@ -1,18 +1,20 @@
-
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../services/supabase';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Card, CardContent, CardHeader } from '../components/ui/Card';
+import { useAuth } from '../App';
+import { Spinner } from '../components/ui/Spinner';
 
 const LoginPage: React.FC = () => {
+  const { loading: authLoading } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-
+  
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -21,14 +23,18 @@ const LoginPage: React.FC = () => {
     try {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
-      // Pengalihan ditangani oleh router utama berdasarkan peran
-      navigate('/');
+      // Pengalihan sekarang ditangani oleh router utama berdasarkan peran
+      navigate('/', { replace: true });
     } catch (error: any) {
       setError(error.message || 'Email atau password salah.');
     } finally {
       setIsLoading(false);
     }
   };
+  
+  if (authLoading) {
+      return <div className="h-screen w-screen flex items-center justify-center bg-brand-pink-50"><Spinner /></div>;
+  }
 
   return (
     <div 
@@ -79,6 +85,14 @@ const LoginPage: React.FC = () => {
               className="font-semibold text-brand-pink-500 hover:underline ml-1"
             >
               Daftar disini
+            </Link>
+          </p>
+           <p className="text-center text-xs text-gray-400 mt-4">
+            <Link
+              to="/login-admin"
+              className="hover:underline"
+            >
+              Masuk sebagai Admin
             </Link>
           </p>
         </CardContent>

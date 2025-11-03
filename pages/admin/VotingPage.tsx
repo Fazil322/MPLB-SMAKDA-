@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../services/supabase';
 import { Poll } from '../../types';
@@ -23,7 +24,7 @@ const AdminVotingPage: React.FC = () => {
             .order('created_at', { ascending: false });
 
         if (pollsError) {
-            console.error('Error fetching polls:', pollsError);
+            console.error('Error fetching polls:', pollsError.message);
             setLoading(false);
             return;
         }
@@ -34,7 +35,7 @@ const AdminVotingPage: React.FC = () => {
                     .from('poll_options')
                     .select('*')
                     .eq('poll_id', poll.id);
-                if (optionsError) console.error('Error fetching options:', optionsError);
+                if (optionsError) console.error('Error fetching options:', optionsError.message);
                 return { ...poll, poll_options: optionsData || [] };
             })
         );
@@ -74,7 +75,7 @@ const AdminVotingPage: React.FC = () => {
             .single();
 
         if (error || !data) {
-            console.error('Error creating poll:', error);
+            console.error('Error creating poll:', error?.message);
             return;
         }
 
@@ -85,7 +86,7 @@ const AdminVotingPage: React.FC = () => {
 
         if (optionsToInsert.length > 0) {
             const { error: optionsError } = await supabase.from('poll_options').insert(optionsToInsert);
-            if (optionsError) console.error('Error creating options:', optionsError);
+            if (optionsError) console.error('Error creating options:', optionsError.message);
         }
 
         setIsModalOpen(false);
@@ -96,14 +97,14 @@ const AdminVotingPage: React.FC = () => {
         
     const togglePollStatus = async (poll: Poll) => {
         const { error } = await supabase.from('polls').update({ is_active: !poll.is_active }).eq('id', poll.id);
-        if (error) console.error('Error toggling poll status:', error);
+        if (error) console.error('Error toggling poll status:', error.message);
         else fetchPolls();
     };
     
     const deletePoll = async (pollId: string) => {
         if (window.confirm('Apakah Anda yakin ingin menghapus polling ini? Semua data suara akan hilang.')) {
             const { error } = await supabase.from('polls').delete().eq('id', pollId);
-            if (error) console.error('Error deleting poll:', error);
+            if (error) console.error('Error deleting poll:', error.message);
             else fetchPolls();
         }
     };

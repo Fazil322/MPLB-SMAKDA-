@@ -4,8 +4,11 @@ import { supabase } from '../services/supabase';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Card, CardContent, CardHeader } from '../components/ui/Card';
+import { useAuth } from '../App';
+import { Spinner } from '../components/ui/Spinner';
 
 const RegisterPage: React.FC = () => {
+  const { loading: authLoading } = useAuth();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -13,7 +16,7 @@ const RegisterPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const navigate = useNavigate();
-
+  
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -39,6 +42,10 @@ const RegisterPage: React.FC = () => {
       setIsLoading(false);
     }
   };
+  
+  if (authLoading) {
+    return <div className="h-screen w-screen flex items-center justify-center bg-brand-pink-50"><Spinner /></div>;
+  }
 
   return (
     <div className="min-h-screen bg-brand-pink-50 flex items-center justify-center p-4">
@@ -52,7 +59,7 @@ const RegisterPage: React.FC = () => {
         <CardContent>
           {success ? (
             <div className="text-center">
-                <p className="text-green-700 bg-green-100 p-4 rounded-lg">Pendaftaran berhasil! Silakan cek email Anda untuk verifikasi (jika diaktifkan), lalu kembali untuk login.</p>
+                <p className="text-green-700 bg-green-100 p-4 rounded-lg">Pendaftaran berhasil! Silakan cek email Anda untuk verifikasi, lalu kembali untuk login.</p>
                 <Button onClick={() => navigate('/login')} className="w-full mt-4">
                     Kembali ke Login
                 </Button>

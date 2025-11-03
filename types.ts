@@ -164,9 +164,38 @@ export interface Database {
       [_ in never]: never
     }
     Functions: {
+      delete_user_by_admin: {
+        Args: {
+          target_user_id: string
+        }
+        Returns: string
+      }
+      get_all_users: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          email: string
+          full_name: string | null
+          user_role: string | null
+          created_at: string
+        }[]
+      }
       get_dashboard_stats: {
         Args: Record<PropertyKey, never>
         Returns: Json
+      }
+      handle_vote: {
+        Args: {
+          option_id_to_vote: string
+        }
+        Returns: string
+      }
+      update_user_role: {
+        Args: {
+          target_user_id: string
+          new_role: string
+        }
+        Returns: string
       }
     }
     Enums: {

@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../services/supabase';
 import { StoredFile } from '../../types';
@@ -74,7 +75,7 @@ const AdminFilesPage: React.FC = () => {
         setLoading(true);
         const { data, error } = await supabase.from('files').select('*').order('created_at', { ascending: false });
         if (error) {
-            console.error('Error fetching files:', error);
+            console.error('Error fetching files:', error.message);
             toast.error("Gagal memuat berkas.");
         } else {
             setFiles(data || []);
@@ -121,7 +122,7 @@ const AdminFilesPage: React.FC = () => {
                 return 'File berhasil diunggah!';
             },
             error: (err) => {
-                console.error('Upload error:', err);
+                console.error('Upload error:', err.message || err);
                 return 'Gagal mengunggah file.';
             }
         });
@@ -142,7 +143,7 @@ const AdminFilesPage: React.FC = () => {
                     return 'File berhasil dihapus.';
                 },
                 error: (err) => {
-                    console.error('Delete error:', err);
+                    console.error('Delete error:', err.message || err);
                     return 'Gagal menghapus file.';
                 }
             });

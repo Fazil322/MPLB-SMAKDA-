@@ -1,5 +1,6 @@
 import React, { useState, useEffect, createContext, useContext, ReactNode } from 'react';
-import { HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+// FIX: Add Outlet to react-router-dom import for layout routes.
+import { HashRouter, Routes, Route, Navigate, useLocation, Outlet } from 'react-router-dom';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from './services/supabase';
 import { UserRole } from './types';
@@ -26,7 +27,6 @@ import StudentAnnouncementsPage from './pages/student/AnnouncementsPage';
 import StudentVotingPage from './pages/student/VotingPage';
 import StudentFilesPage from './pages/student/FilesPage';
 
-
 interface AuthContextType {
     session: Session | null;
     user: User | null;
@@ -36,33 +36,20 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType>({ session: null, user: null, userRole: null, loading: true });
 
-type AuthProviderProps = {
-    children: ReactNode;
-};
-export function AuthProvider({ children }: AuthProviderProps) {
+// FIX: Make children optional to resolve type errors where the compiler doesn't recognize JSX children.
+export function AuthProvider({ children }: { children?: ReactNode }) {
     const [session, setSession] = useState<Session | null>(null);
     const [user, setUser] = useState<User | null>(null);
     const [userRole, setUserRole] = useState<UserRole>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const fetchSession = async () => {
-            const { data: { session } } = await supabase.auth.getSession();
-            setSession(session);
-            setUser(session?.user ?? null);
-            setUserRole((session?.user?.app_metadata?.user_role as UserRole) || null);
-            setLoading(false);
-        };
-
-        fetchSession();
-
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
             setSession(session);
-            setUser(session?.user ?? null);
-            setUserRole((session?.user?.app_metadata?.user_role as UserRole) || null);
-            if (_event === 'SIGNED_IN' || _event === 'USER_UPDATED') {
-                 setLoading(false);
-            }
+            const currentUser = session?.user;
+            setUser(currentUser ?? null);
+            setUserRole((currentUser?.app_metadata?.user_role as UserRole) || 'student');
+            setLoading(false);
         });
 
         return () => subscription.unsubscribe();
@@ -75,28 +62,33 @@ export function AuthProvider({ children }: AuthProviderProps) {
     );
 }
 
-export const useAuth = () => {
-    return useContext(AuthContext);
-};
+export const useAuth = () => useContext(AuthContext);
 
+const FullScreenSpinner = () => (
+    <div className="h-screen w-screen flex items-center justify-center bg-brand-pink-50">
+        <Spinner />
+    </div>
+);
+
+// Component untuk mengalihkan pengguna berdasarkan peran mereka saat mengunjungi rute root
 const RoleBasedRedirect = () => {
     const { userRole, loading } = useAuth();
 
     if (loading) {
-        return <div className="h-screen w-screen flex items-center justify-center bg-brand-pink-50"><Spinner /></div>;
+        return <FullScreenSpinner />;
     }
 
     if (userRole === 'admin') {
         return <Navigate to="/admin" replace />;
     }
-    if (userRole === 'student') {
-        return <Navigate to="/student" replace />;
-    }
-    return <Navigate to="/login" replace />;
+    // Secara default, arahkan ke siswa, atau jika tidak ada peran, akan ditangani oleh ProtectedRoute
+    return <Navigate to="/student" replace />;
 }
 
+// Melindungi rute yang memerlukan otentikasi
+// FIX: Make children optional to resolve type errors where the compiler doesn't recognize JSX children.
 type ProtectedRouteProps = {
-    children: React.ReactElement;
+    children?: React.ReactElement;
     allowedRoles: UserRole[];
 };
 function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
@@ -104,80 +96,96 @@ function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
     const location = useLocation();
 
     if (loading) {
-        return <div className="h-screen w-screen flex items-center justify-center bg-brand-pink-50"><Spinner /></div>;
+        return <FullScreenSpinner />;
     }
     
     if (!session) {
          return <Navigate to="/login" state={{ from: location }} replace />;
     }
 
-    return allowedRoles.includes(userRole) ? children : <Navigate to="/login" replace />;
+    if (!allowedRoles.includes(userRole)) {
+        // Jika pengguna mencoba mengakses rute yang tidak sah, arahkan mereka
+        return <Navigate to="/" replace />;
+    }
+
+    // FIX: Return children or null since it's now optional.
+    return children ?? null;
 }
+
+// Melindungi rute publik (misalnya, /login) dari pengguna yang sudah masuk
+// FIX: Make children optional to resolve type errors where the compiler doesn't recognize JSX children.
+const PublicRoute = ({ children }: { children?: React.ReactElement }) => {
+    const { session, loading } = useAuth();
+    if (loading) {
+        // FIX: Corrected typo from FullScreenScreenSpinner to FullScreenSpinner.
+        return <FullScreenSpinner />;
+    }
+    // FIX: Return children or null since it's now optional.
+    return session ? <Navigate to="/" replace /> : (children ?? null);
+};
+
+// FIX: Create wrapper components for Admin and Student layouts to use with React Router v6 Outlet.
+const AdminLayoutWrapper = () => (
+    <ProtectedRoute allowedRoles={['admin']}>
+        <AdminLayout>
+            <Outlet />
+        </AdminLayout>
+    </ProtectedRoute>
+);
+
+const StudentLayoutWrapper = () => (
+    <ProtectedRoute allowedRoles={['student']}>
+        <StudentLayout>
+            <Outlet />
+        </StudentLayout>
+    </ProtectedRoute>
+);
+
 
 const App = () => {
     return (
-        // FIX: Explicitly passing `children` as a prop to work around a potential
-        // tooling issue causing "Property 'children' is missing" errors.
-        <AuthProvider children={
-            <>
-                <Toaster position="top-center" reverseOrder={false} />
-                <HashRouter>
-                    <Routes>
-                        {/* --- RUTE OTENTIKASI --- */}
-                        <Route path="/login" element={<LoginPage />} />
-                        <Route path="/register" element={<RegisterPage />} />
-                        <Route path="/login-admin" element={<AdminLoginPage />} />
-                        
-                        <Route path="/" element={<RoleBasedRedirect />} />
+        <AuthProvider>
+            <Toaster position="top-center" reverseOrder={false} />
+            <HashRouter>
+                <Routes>
+                    {/* --- RUTE PUBLIK (Hanya dapat diakses saat logout) --- */}
+                    <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
+                    <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
+                    <Route path="/login-admin" element={<PublicRoute><AdminLoginPage /></PublicRoute>} />
+                    
+                    {/* --- Pengalihan Root --- */}
+                    <Route path="/" element={<RoleBasedRedirect />} />
 
-                        {/* --- RUTE ADMIN --- */}
-                        <Route
-                            path="/admin/*"
-                            element={
-                                // FIX: Explicitly passing `children` as a prop to work around a potential
-                                // tooling issue causing "Property 'children' is missing" errors.
-                                <ProtectedRoute allowedRoles={['admin']} children={
-                                    <AdminLayout>
-                                        <Routes>
-                                            <Route path="/" element={<AdminDashboardPage />} />
-                                            <Route path="/dashboard" element={<AdminDashboardPage />} />
-                                            <Route path="/announcements" element={<AdminAnnouncementsPage />} />
-                                            <Route path="/voting" element={<AdminVotingPage />} />
-                                            <Route path="/files" element={<AdminFilesPage />} />
-                                            <Route path="/users" element={<AdminUsersPage />} />
-                                            <Route path="/profile" element={<ProfilePage />} />
-                                            <Route path="*" element={<Navigate to="/admin" />} />
-                                        </Routes>
-                                    </AdminLayout>
-                                } />
-                            }
-                        />
+                    {/* --- RUTE ADMIN --- */}
+                    {/* FIX: Refactored admin routes to use a layout route, which is the correct pattern for React Router v6. */}
+                    <Route path="/admin" element={<AdminLayoutWrapper />}>
+                        <Route index element={<AdminDashboardPage />} />
+                        <Route path="dashboard" element={<AdminDashboardPage />} />
+                        <Route path="announcements" element={<AdminAnnouncementsPage />} />
+                        <Route path="voting" element={<AdminVotingPage />} />
+                        <Route path="files" element={<AdminFilesPage />} />
+                        <Route path="users" element={<AdminUsersPage />} />
+                        <Route path="profile" element={<ProfilePage />} />
+                        <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
+                    </Route>
 
-                        {/* --- RUTE SISWA --- */}
-                        <Route
-                            path="/student/*"
-                            element={
-                                // FIX: Explicitly passing `children` as a prop to work around a potential
-                                // tooling issue causing "Property 'children' is missing" errors.
-                                <ProtectedRoute allowedRoles={['student']} children={
-                                    <StudentLayout>
-                                        <Routes>
-                                            <Route path="/" element={<StudentDashboardPage />} />
-                                            <Route path="/dashboard" element={<StudentDashboardPage />} />
-                                            <Route path="/announcements" element={<StudentAnnouncementsPage />} />
-                                            <Route path="/voting" element={<StudentVotingPage />} />
-                                            <Route path="/files" element={<StudentFilesPage />} />
-                                            <Route path="/profile" element={<ProfilePage />} />
-                                            <Route path="*" element={<Navigate to="/student" />} />
-                                        </Routes>
-                                    </StudentLayout>
-                                } />
-                            }
-                        />
-                    </Routes>
-                </HashRouter>
-            </>
-        } />
+                    {/* --- RUTE SISWA --- */}
+                    {/* FIX: Refactored student routes to use a layout route, which is the correct pattern for React Router v6. */}
+                    <Route path="/student" element={<StudentLayoutWrapper />}>
+                        <Route index element={<StudentDashboardPage />} />
+                        <Route path="dashboard" element={<StudentDashboardPage />} />
+                        <Route path="announcements" element={<StudentAnnouncementsPage />} />
+                        <Route path="voting" element={<StudentVotingPage />} />
+                        <Route path="files" element={<StudentFilesPage />} />
+                        <Route path="profile" element={<ProfilePage />} />
+                        <Route path="*" element={<Navigate to="/student/dashboard" replace />} />
+                    </Route>
+
+                     {/* Fallback untuk rute yang tidak cocok */}
+                    <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+            </HashRouter>
+        </AuthProvider>
     );
 };
 
