@@ -1,9 +1,11 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../services/supabase';
 import { Poll, Vote } from '../../types';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Spinner } from '../../components/ui/Spinner';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import toast from 'react-hot-toast';
 
 const COLORS = ['#f43f86', '#fb71a6', '#fda4c4', '#fecddf', '#ffe4ec'];
 
@@ -42,12 +44,12 @@ const StudentVotingPage: React.FC = () => {
         const { data, error } = await supabase.rpc('handle_vote', { option_id_to_vote: optionId });
         if (error) {
             console.error('Error voting:', error);
-            alert("Gagal memberikan suara.");
+            toast.error("Gagal memberikan suara.");
         } else {
             if (data.includes('Error')) {
-                alert(data);
+                toast.error(data.replace('Error: ', ''));
             } else {
-                alert("Suara berhasil direkam!");
+                toast.success("Suara berhasil direkam!");
                 fetchData();
             }
         }

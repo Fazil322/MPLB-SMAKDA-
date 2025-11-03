@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../services/supabase';
@@ -7,8 +6,7 @@ import { Input } from '../../components/ui/Input';
 import { Card, CardContent, CardHeader } from '../../components/ui/Card';
 
 const AdminLoginPage: React.FC = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
@@ -18,55 +16,68 @@ const AdminLoginPage: React.FC = () => {
     setIsLoading(true);
     setError(null);
 
+    // Periksa apakah kode benar
+    if (code !== 'MPLB') {
+        setError('Kode akses admin salah.');
+        setIsLoading(false);
+        return;
+    }
+
     try {
-      const { data, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+      // CATATAN: Untuk implementasi ini, kami menggunakan akun admin khusus.
+      // Dalam skenario dunia nyata, kredensial ini harus disimpan dengan aman
+      // di variabel lingkungan dan logika login mungkin ditangani di sisi server.
+      const adminEmail = 'admin.mplbhub@smklppmri2.sch.id';
+      const adminPassword = 'password-mplb-aman'; // Ini harus berupa password yang kuat.
+
+      const { error: signInError } = await supabase.auth.signInWithPassword({ 
+          email: adminEmail, 
+          password: adminPassword 
+        });
       
-      if (signInError) throw signInError;
-
-      // Validasi Peran: Pastikan pengguna adalah admin
-      const userRole = data.user?.app_metadata?.user_role;
-
-      if (userRole === 'admin') {
-        // Jika admin, biarkan router utama yang mengarahkan
-        navigate('/');
-      } else {
-        // Jika bukan admin, logout paksa dan tampilkan error
-        await supabase.auth.signOut();
-        throw new Error('Akses ditolak. Akun ini bukan admin.');
+      if (signInError) {
+          // Ini mungkin terjadi jika akun admin khusus tidak ada atau passwordnya salah
+          throw new Error('Gagal mengotentikasi akun admin. Hubungi developer.');
       }
+
+      // Setelah login berhasil, router utama akan mengarahkan berdasarkan peran.
+      navigate('/');
+
     } catch (error: any) {
-      setError(error.message || 'Email atau password salah.');
+      setError(error.message || 'Terjadi kesalahan saat login.');
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
+    <div 
+        className="min-h-screen bg-slate-100 flex items-center justify-center p-4"
+        style={{
+            backgroundImage: `
+                radial-gradient(circle at 1px 1px, #e2e8f0 1px, transparent 0),
+                radial-gradient(circle at 10px 10px, #e2e8f0 1px, transparent 0)
+            `,
+            backgroundSize: '20px 20px'
+        }}
+    >
       <Card className="w-full max-w-sm animate-fade-in-up">
          <CardHeader>
            <div className="text-center">
                 <div className="inline-block bg-brand-pink-500 p-3 rounded-2xl mb-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M12 2v20"/><path d="M12 18a4 4 0 0 0 0-12"/><path d="M12 6a4 4 0 0 1 0 12"/></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><shield-check stroke-width="2.5" /><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/><path d="m9 12 2 2 4-4"/></svg>
                 </div>
                 <h1 className="text-3xl font-bold text-brand-pink-600">Portal Admin</h1>
-                <p className="text-gray-500 mt-2">Login khusus untuk administrator</p>
+                <p className="text-gray-500 mt-2">Masukkan kode akses untuk melanjutkan</p>
             </div>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleAdminLogin} className="space-y-4">
             <Input
-              type="email"
-              placeholder="Email Admin"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-            <Input
               type="password"
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Kode Akses Admin"
+              value={code}
+              onChange={(e) => setCode(e.target.value.toUpperCase())}
               required
             />
             {error && <p className="text-red-500 text-sm text-center bg-red-100 p-2 rounded-lg">{error}</p>}

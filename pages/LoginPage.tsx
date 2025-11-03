@@ -31,7 +31,16 @@ const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-brand-pink-50 flex items-center justify-center p-4">
+    <div 
+        className="min-h-screen bg-brand-pink-50 flex items-center justify-center p-4"
+        style={{
+            backgroundImage: `
+                radial-gradient(circle at 1px 1px, #fecddf 1px, transparent 0),
+                radial-gradient(circle at 10px 10px, #fecddf 1px, transparent 0)
+            `,
+            backgroundSize: '20px 20px'
+        }}
+    >
       <Card className="w-full max-w-sm animate-fade-in-up">
          <CardHeader>
            <div className="text-center">

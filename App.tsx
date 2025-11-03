@@ -1,14 +1,14 @@
-
 import React, { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import { HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from './services/supabase';
 import { UserRole } from './types';
+import { Toaster } from 'react-hot-toast';
 
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import ProfilePage from './pages/ProfilePage';
-import AdminLoginPage from './pages/auth/AdminLoginPage'; // <-- IMPORT BARU
+import AdminLoginPage from './pages/auth/AdminLoginPage';
 import { Spinner } from './components/ui/Spinner';
 
 // Admin Imports
@@ -114,66 +114,70 @@ function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
     return allowedRoles.includes(userRole) ? children : <Navigate to="/login" replace />;
 }
 
-// FIX: Removed unnecessary wrapper components AdminRoute and StudentRoute and their corresponding type.
-// The ProtectedRoute component will be used directly.
-
 const App = () => {
     return (
-        <AuthProvider>
-            <HashRouter>
-                <Routes>
-                    {/* --- RUTE OTENTIKASI --- */}
-                    <Route path="/login" element={<LoginPage />} />
-                    <Route path="/register" element={<RegisterPage />} />
-                    <Route path="/login-admin" element={<AdminLoginPage />} /> {/* <-- RUTE TERSEMBUNYI BARU */}
-                    
-                    <Route path="/" element={<RoleBasedRedirect />} />
+        // FIX: Explicitly passing `children` as a prop to work around a potential
+        // tooling issue causing "Property 'children' is missing" errors.
+        <AuthProvider children={
+            <>
+                <Toaster position="top-center" reverseOrder={false} />
+                <HashRouter>
+                    <Routes>
+                        {/* --- RUTE OTENTIKASI --- */}
+                        <Route path="/login" element={<LoginPage />} />
+                        <Route path="/register" element={<RegisterPage />} />
+                        <Route path="/login-admin" element={<AdminLoginPage />} />
+                        
+                        <Route path="/" element={<RoleBasedRedirect />} />
 
-                    {/* --- RUTE ADMIN --- */}
-                    <Route
-                        path="/admin/*"
-                        element={
-                            // FIX: Replaced AdminRoute with a direct implementation of ProtectedRoute.
-                            <ProtectedRoute allowedRoles={['admin']}>
-                                <AdminLayout>
-                                    <Routes>
-                                        <Route path="/" element={<AdminDashboardPage />} />
-                                        <Route path="/dashboard" element={<AdminDashboardPage />} />
-                                        <Route path="/announcements" element={<AdminAnnouncementsPage />} />
-                                        <Route path="/voting" element={<AdminVotingPage />} />
-                                        <Route path="/files" element={<AdminFilesPage />} />
-                                        <Route path="/users" element={<AdminUsersPage />} />
-                                        <Route path="/profile" element={<ProfilePage />} />
-                                        <Route path="*" element={<Navigate to="/admin" />} />
-                                    </Routes>
-                                </AdminLayout>
-                            </ProtectedRoute>
-                        }
-                    />
+                        {/* --- RUTE ADMIN --- */}
+                        <Route
+                            path="/admin/*"
+                            element={
+                                // FIX: Explicitly passing `children` as a prop to work around a potential
+                                // tooling issue causing "Property 'children' is missing" errors.
+                                <ProtectedRoute allowedRoles={['admin']} children={
+                                    <AdminLayout>
+                                        <Routes>
+                                            <Route path="/" element={<AdminDashboardPage />} />
+                                            <Route path="/dashboard" element={<AdminDashboardPage />} />
+                                            <Route path="/announcements" element={<AdminAnnouncementsPage />} />
+                                            <Route path="/voting" element={<AdminVotingPage />} />
+                                            <Route path="/files" element={<AdminFilesPage />} />
+                                            <Route path="/users" element={<AdminUsersPage />} />
+                                            <Route path="/profile" element={<ProfilePage />} />
+                                            <Route path="*" element={<Navigate to="/admin" />} />
+                                        </Routes>
+                                    </AdminLayout>
+                                } />
+                            }
+                        />
 
-                    {/* --- RUTE SISWA --- */}
-                    <Route
-                        path="/student/*"
-                        element={
-                            // FIX: Replaced StudentRoute with a direct implementation of ProtectedRoute.
-                            <ProtectedRoute allowedRoles={['student']}>
-                                <StudentLayout>
-                                    <Routes>
-                                        <Route path="/" element={<StudentDashboardPage />} />
-                                        <Route path="/dashboard" element={<StudentDashboardPage />} />
-                                        <Route path="/announcements" element={<StudentAnnouncementsPage />} />
-                                        <Route path="/voting" element={<StudentVotingPage />} />
-                                        <Route path="/files" element={<StudentFilesPage />} />
-                                        <Route path="/profile" element={<ProfilePage />} />
-                                        <Route path="*" element={<Navigate to="/student" />} />
-                                    </Routes>
-                                </StudentLayout>
-                            </ProtectedRoute>
-                        }
-                    />
-                </Routes>
-            </HashRouter>
-        </AuthProvider>
+                        {/* --- RUTE SISWA --- */}
+                        <Route
+                            path="/student/*"
+                            element={
+                                // FIX: Explicitly passing `children` as a prop to work around a potential
+                                // tooling issue causing "Property 'children' is missing" errors.
+                                <ProtectedRoute allowedRoles={['student']} children={
+                                    <StudentLayout>
+                                        <Routes>
+                                            <Route path="/" element={<StudentDashboardPage />} />
+                                            <Route path="/dashboard" element={<StudentDashboardPage />} />
+                                            <Route path="/announcements" element={<StudentAnnouncementsPage />} />
+                                            <Route path="/voting" element={<StudentVotingPage />} />
+                                            <Route path="/files" element={<StudentFilesPage />} />
+                                            <Route path="/profile" element={<ProfilePage />} />
+                                            <Route path="*" element={<Navigate to="/student" />} />
+                                        </Routes>
+                                    </StudentLayout>
+                                } />
+                            }
+                        />
+                    </Routes>
+                </HashRouter>
+            </>
+        } />
     );
 };
 

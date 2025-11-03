@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../services/supabase';
 import { StoredFile } from '../../types';
@@ -6,6 +7,7 @@ import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
 import { Input } from '../../components/ui/Input';
 import { Spinner } from '../../components/ui/Spinner';
+import toast from 'react-hot-toast';
 
 const FileCard: React.FC<{ file: StoredFile; onDelete: (file: StoredFile) => void; }> = ({ file, onDelete }) => {
     const [fileUrl, setFileUrl] = useState<string | null>(null);
@@ -20,13 +22,15 @@ const FileCard: React.FC<{ file: StoredFile; onDelete: (file: StoredFile) => voi
         'pdf': <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 22h14a2 2 0 0 0 2-2V7.5L14.5 2H6a2 2 0 0 0-2 2v4"/><path d="M14 2v6h6"/><path d="M2 12h2"/><path d="M2 18h2"/><path d="M7 12h3v6"/><path d="M17 12h-1a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h1"/><path d="M12 12h1a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2h-1"/></svg>,
         'document': <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/><line x1="10" x2="8" y1="9" y2="9"/></svg>,
         'presentation': <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h20"/><path d="M21 3v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V3"/><path d="m7 21 5-5 5 5"/></svg>,
+        'other': <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" /></svg>
     };
     
     const getIconKey = (type: string) => {
         if (type.startsWith('image')) return 'image';
         if (type.includes('pdf')) return 'pdf';
         if (type.includes('presentation') || type.includes('powerpoint')) return 'presentation';
-        return 'document';
+        if (type.includes('document') || type.includes('word')) return 'document';
+        return 'other';
     }
 
     return (
@@ -58,17 +62,23 @@ const AdminFilesPage: React.FC = () => {
     const [files, setFiles] = useState<StoredFile[]>([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [uploading, setUploading] = useState(false);
     
     const [newFile, setNewFile] = useState<File | null>(null);
     const [description, setDescription] = useState('');
     const [category, setCategory] = useState('document');
+    
+    const [searchTerm, setSearchTerm] = useState('');
+    const [activeCategory, setActiveCategory] = useState('Semua');
 
     const fetchFiles = useCallback(async () => {
         setLoading(true);
         const { data, error } = await supabase.from('files').select('*').order('created_at', { ascending: false });
-        if (error) console.error('Error fetching files:', error);
-        else setFiles(data || []);
+        if (error) {
+            console.error('Error fetching files:', error);
+            toast.error("Gagal memuat berkas.");
+        } else {
+            setFiles(data || []);
+        }
         setLoading(false);
     }, []);
 
@@ -86,71 +96,93 @@ const AdminFilesPage: React.FC = () => {
         e.preventDefault();
         if (!newFile) return;
 
-        setUploading(true);
         const filePath = `public/${Date.now()}_${newFile.name}`;
 
-        const { error: uploadError } = await supabase.storage
-            .from('mplb_files')
-            .upload(filePath, newFile);
+        const uploadPromise = supabase.storage.from('mplb_files').upload(filePath, newFile)
+            .then(uploadResult => {
+                if (uploadResult.error) throw uploadResult.error;
+                return supabase.from('files').insert({
+                    file_name: newFile.name,
+                    storage_path: filePath,
+                    description,
+                    category,
+                    file_type: newFile.type
+                });
+            });
 
-        if (uploadError) {
-            console.error('Error uploading file:', uploadError);
-            alert('Gagal mengunggah file.');
-            setUploading(false);
-            return;
-        }
-
-        const { error: insertError } = await supabase.from('files').insert({
-            file_name: newFile.name,
-            storage_path: filePath,
-            description,
-            category,
-            file_type: newFile.type
+        toast.promise(uploadPromise, {
+            loading: 'Mengunggah file...',
+            success: () => {
+                setIsModalOpen(false);
+                setNewFile(null);
+                setDescription('');
+                setCategory('document');
+                fetchFiles();
+                return 'File berhasil diunggah!';
+            },
+            error: (err) => {
+                console.error('Upload error:', err);
+                return 'Gagal mengunggah file.';
+            }
         });
-
-        if (insertError) {
-            console.error('Error inserting file record:', insertError);
-        }
-
-        setUploading(false);
-        setIsModalOpen(false);
-        setNewFile(null);
-        setDescription('');
-        setCategory('document');
-        fetchFiles();
     };
     
     const handleDelete = async (file: StoredFile) => {
         if (window.confirm('Apakah Anda yakin ingin menghapus file ini?')) {
-            const { error: storageError } = await supabase.storage.from('mplb_files').remove([file.storage_path]);
-            if (storageError) console.error('Error deleting from storage:', storageError);
+            const deletePromise = supabase.storage.from('mplb_files').remove([file.storage_path])
+                .then(storageResult => {
+                    if (storageResult.error) throw storageResult.error;
+                    return supabase.from('files').delete().eq('id', file.id);
+                });
 
-            const { error: dbError } = await supabase.from('files').delete().eq('id', file.id);
-            if (dbError) console.error('Error deleting from db:', dbError);
-            else fetchFiles();
+            toast.promise(deletePromise, {
+                loading: 'Menghapus file...',
+                success: () => {
+                    fetchFiles();
+                    return 'File berhasil dihapus.';
+                },
+                error: (err) => {
+                    console.error('Delete error:', err);
+                    return 'Gagal menghapus file.';
+                }
+            });
         }
     };
 
     const fileCategories = ['Semua', ...Array.from(new Set(files.map(f => f.category)))];
-    const [activeCategory, setActiveCategory] = useState('Semua');
-    const filteredFiles = activeCategory === 'Semua' ? files : files.filter(f => f.category === activeCategory);
+    
+    const filteredFiles = files.filter(file => 
+        (activeCategory === 'Semua' || file.category === activeCategory) &&
+        file.file_name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <h1 className="text-3xl font-bold text-gray-800">Penyimpanan Berkas</h1>
                 <Button onClick={() => setIsModalOpen(true)}>+ Unggah File Baru</Button>
             </div>
             
-             <div className="flex space-x-2 border-b border-gray-200 overflow-x-auto pb-2">
-                {fileCategories.map(cat => (
-                    <button key={cat}
-                        onClick={() => setActiveCategory(cat)}
-                        className={`px-4 py-2 font-semibold capitalize transition-colors whitespace-nowrap rounded-md ${activeCategory === cat ? 'bg-brand-pink-100 text-brand-pink-600' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'}`}
-                    >
-                        {cat}
-                    </button>
-                ))}
+            <div className="flex flex-col sm:flex-row gap-4">
+                <div className="flex-grow">
+                     <Input 
+                        type="text"
+                        placeholder="Cari nama berkas..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full"
+                    />
+                </div>
+                 <div className="flex space-x-2 border-b sm:border-b-0 border-gray-200 overflow-x-auto pb-2 sm:pb-0">
+                    {fileCategories.map(cat => (
+                        <button key={cat}
+                            onClick={() => setActiveCategory(cat)}
+                            className={`px-4 py-2 font-semibold capitalize transition-colors whitespace-nowrap rounded-md text-sm ${activeCategory === cat ? 'bg-brand-pink-100 text-brand-pink-600' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'}`}
+                        >
+                            {cat}
+                        </button>
+                    ))}
+                </div>
             </div>
 
             {loading ? <Spinner /> : filteredFiles.length > 0 ? (
@@ -161,7 +193,7 @@ const AdminFilesPage: React.FC = () => {
                 </div>
             ) : (
                 <Card className="text-center py-12">
-                     <p className="text-gray-500">Tidak ada file dalam kategori ini.</p>
+                     <p className="text-gray-500">Tidak ada file yang cocok dengan kriteria Anda.</p>
                 </Card>
             )}
 
@@ -186,7 +218,7 @@ const AdminFilesPage: React.FC = () => {
                     </div>
                     <div className="flex justify-end space-x-2">
                          <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)}>Batal</Button>
-                         <Button type="submit" isLoading={uploading}>{uploading ? 'Mengunggah...' : 'Unggah'}</Button>
+                         <Button type="submit">Unggah</Button>
                     </div>
                  </form>
             </Modal>

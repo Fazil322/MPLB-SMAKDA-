@@ -46,7 +46,8 @@ For this application with Admin and Student roles to work, you need to set up yo
       id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
       created_at TIMESTAMPTZ DEFAULT now() NOT NULL,
       title TEXT NOT NULL,
-      content TEXT NOT NULL
+      content TEXT NOT NULL,
+      is_pinned BOOLEAN DEFAULT false NOT NULL -- NEW: For pinning announcements
     );
     ALTER TABLE announcements ENABLE ROW LEVEL SECURITY;
     CREATE POLICY "Allow public read access" ON announcements FOR SELECT USING (true);
@@ -154,9 +155,12 @@ For this application with Admin and Student roles to work, you need to set up yo
 6.  **Authentication:**
     - Go to Authentication -> Providers and enable the "Email" provider.
     - Students will sign up through the app.
-    - To create an **Admin**, sign up a user normally, then go to the `auth.users` table, find the user, and edit their `raw_app_meta_data` to be: `{"user_role": "admin"}`.
+    - **PENTING: Pengaturan Akun Admin:**
+      - Untuk membuat **Admin**, Anda HARUS membuat pengguna khusus untuk sistem login kode tunggal.
+      - Daftar pengguna baru dengan email `admin.mplbhub@smklppmri2.sch.id` dan password `password-mplb-aman`. Anda dapat mengubah password ini, tetapi pastikan untuk memperbaruinya juga di file `pages/auth/AdminLoginPage.tsx`.
+      - Setelah membuat pengguna, buka tabel `auth.users`, temukan pengguna tersebut, dan edit `raw_app_meta_data` mereka menjadi: `{"user_role": "admin"}`. Langkah ini sangat penting agar kontrol akses berbasis peran berfungsi.
 
-7. **User Management Functions (NEW - for Admins):**
+7. **User Management Functions:**
    Run these functions in the SQL Editor to allow admins to manage users from the app UI.
    ```sql
     -- Function for admins to get all users' details
@@ -233,4 +237,35 @@ For this application with Admin and Student roles to work, you need to set up yo
     END;
     $$;
    ```
+   
+8.  **Dashboard Statistics Function (NEW):**
+    This function securely provides statistics for the admin dashboard.
+    ```sql
+    CREATE OR REPLACE FUNCTION get_dashboard_stats()
+    RETURNS JSON
+    LANGUAGE plpgsql
+    SECURITY DEFINER
+    SET search_path = public
+    AS $$
+    DECLARE
+        total_users_count INT;
+        active_polls_count INT;
+        total_files_count INT;
+    BEGIN
+        IF NOT is_admin() THEN
+            RAISE EXCEPTION 'Only admins can view dashboard stats.';
+        END IF;
+
+        SELECT count(*) INTO total_users_count FROM auth.users;
+        SELECT count(*) INTO active_polls_count FROM public.polls WHERE is_active = true;
+        SELECT count(*) INTO total_files_count FROM public.files;
+
+        RETURN json_build_object(
+            'total_users', total_users_count,
+            'active_polls', active_polls_count,
+            'total_files', total_files_count
+        );
+    END;
+    $$;
+    ```
 */

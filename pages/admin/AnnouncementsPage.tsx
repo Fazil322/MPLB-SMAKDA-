@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../services/supabase';
 import { Announcement } from '../../types';
@@ -6,18 +7,32 @@ import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
 import { Input, TextArea } from '../../components/ui/Input';
 import { Spinner } from '../../components/ui/Spinner';
+import toast from 'react-hot-toast';
 
-const AnnouncementCard: React.FC<{ announcement: Announcement; onDelete: (id: string) => void; onEdit: (announcement: Announcement) => void; }> = ({ announcement, onDelete, onEdit }) => {
+const PinIcon: React.FC<{isPinned: boolean}> = ({ isPinned }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill={isPinned ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.59a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+    </svg>
+);
+
+
+const AnnouncementCard: React.FC<{ announcement: Announcement; onDelete: (id: string) => void; onEdit: (announcement: Announcement) => void; onTogglePin: (announcement: Announcement) => void; }> = ({ announcement, onDelete, onEdit, onTogglePin }) => {
     return (
-        <Card>
+        <Card className={`${announcement.is_pinned ? 'bg-brand-pink-50 border-brand-pink-200' : ''}`}>
             <CardHeader className="flex justify-between items-start">
                 <div>
-                    <CardTitle>{announcement.title}</CardTitle>
+                    <div className="flex items-center gap-2">
+                        {announcement.is_pinned && <span className="text-brand-pink-500" title="Disematkan"><PinIcon isPinned={true} /></span>}
+                        <CardTitle>{announcement.title}</CardTitle>
+                    </div>
                     <p className="text-sm text-gray-500 mt-1">
                         Diposting pada {new Date(announcement.created_at).toLocaleDateString()}
                     </p>
                 </div>
-                <div className="flex space-x-2">
+                <div className="flex space-x-2 items-center">
+                    <button onClick={() => onTogglePin(announcement)} className={`p-1 rounded-full ${announcement.is_pinned ? 'text-brand-pink-600' : 'text-gray-400'} hover:bg-brand-pink-100 transition-colors`} title={announcement.is_pinned ? 'Lepas Sematan' : 'Sematkan'}>
+                        <PinIcon isPinned={announcement.is_pinned} />
+                    </button>
                     <button onClick={() => onEdit(announcement)} className="text-blue-500 hover:text-blue-700">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
                     </button>
@@ -42,9 +57,10 @@ const AdminAnnouncementsPage: React.FC = () => {
 
     const fetchAnnouncements = useCallback(async () => {
         setLoading(true);
-        const { data, error } = await supabase.from('announcements').select('*').order('created_at', { ascending: false });
+        const { data, error } = await supabase.from('announcements').select('*').order('is_pinned', { ascending: false }).order('created_at', { ascending: false });
         if (error) {
             console.error('Error fetching announcements:', error);
+            toast.error("Gagal memuat pengumuman.");
         } else {
             setAnnouncements(data);
         }
@@ -74,23 +90,44 @@ const AdminAnnouncementsPage: React.FC = () => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         const { title, content } = currentAnnouncement;
-
-        if (isEditing) {
-            const { error } = await supabase.from('announcements').update({ title, content }).eq('id', currentAnnouncement.id);
-            if (error) console.error('Error updating announcement:', error);
-        } else {
-            const { error } = await supabase.from('announcements').insert([{ title, content }]);
-            if (error) console.error('Error creating announcement:', error);
-        }
-        fetchAnnouncements();
-        handleCloseModal();
+        const promise = isEditing 
+            ? supabase.from('announcements').update({ title, content }).eq('id', currentAnnouncement.id)
+            : supabase.from('announcements').insert([{ title, content }]);
+            
+        toast.promise(promise, {
+            loading: 'Menyimpan...',
+            success: () => {
+                fetchAnnouncements();
+                handleCloseModal();
+                return `Pengumuman berhasil ${isEditing ? 'diperbarui' : 'diterbitkan'}!`;
+            },
+            error: `Gagal ${isEditing ? 'memperbarui' : 'menerbitkan'} pengumuman.`
+        });
     };
+    
+    const handleTogglePin = async (announcement: Announcement) => {
+        const promise = supabase.from('announcements').update({ is_pinned: !announcement.is_pinned }).eq('id', announcement.id);
+        toast.promise(promise, {
+            loading: 'Memperbarui status...',
+            success: () => {
+                fetchAnnouncements();
+                return `Pengumuman berhasil ${!announcement.is_pinned ? 'disematkan' : 'dilepas'}.`;
+            },
+            error: 'Gagal mengubah status sematan.'
+        });
+    }
 
     const handleDelete = async (id: string) => {
         if (window.confirm('Apakah Anda yakin ingin menghapus pengumuman ini?')) {
-            const { error } = await supabase.from('announcements').delete().eq('id', id);
-            if (error) console.error('Error deleting announcement:', error);
-            else fetchAnnouncements();
+            const promise = supabase.from('announcements').delete().eq('id', id);
+            toast.promise(promise, {
+                loading: 'Menghapus...',
+                success: () => {
+                    fetchAnnouncements();
+                    return 'Pengumuman berhasil dihapus.';
+                },
+                error: 'Gagal menghapus pengumuman.'
+            });
         }
     };
     
@@ -105,12 +142,17 @@ const AdminAnnouncementsPage: React.FC = () => {
                 announcements.length > 0 ? (
                     <div className="space-y-4">
                         {announcements.map(ann => (
-                            <AnnouncementCard key={ann.id} announcement={ann} onDelete={handleDelete} onEdit={handleOpenModal} />
+                            <AnnouncementCard key={ann.id} announcement={ann} onDelete={handleDelete} onEdit={handleOpenModal} onTogglePin={handleTogglePin} />
                         ))}
                     </div>
                 ) : (
-                    <Card className="text-center py-12">
-                        <p className="text-gray-500">Belum ada pengumuman. Buat yang pertama!</p>
+                    <Card className="text-center py-12 flex flex-col items-center justify-center">
+                         <div className="p-4 bg-brand-pink-100 text-brand-pink-600 rounded-full mb-4">
+                             <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
+                         </div>
+                        <h3 className="text-xl font-bold text-gray-700">Belum Ada Pengumuman</h3>
+                        <p className="text-gray-500 mt-2">Buat pengumuman pertama Anda untuk dibagikan kepada siswa.</p>
+                        <Button onClick={() => handleOpenModal()} className="mt-4">+ Buat Pengumuman</Button>
                     </Card>
                 )
             )}

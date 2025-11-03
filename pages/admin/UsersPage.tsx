@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../services/supabase';
 import { ManagedUser } from '../../types';
@@ -5,6 +6,7 @@ import { useAuth } from '../../App';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Spinner } from '../../components/ui/Spinner';
+import toast from 'react-hot-toast';
 
 const AdminUsersPage: React.FC = () => {
     const { user: adminUser } = useAuth();
@@ -17,7 +19,7 @@ const AdminUsersPage: React.FC = () => {
         const { data, error } = await supabase.rpc('get_all_users');
         if (error) {
             console.error('Error fetching users:', error);
-            alert(`Gagal memuat pengguna: ${error.message}`);
+            toast.error(`Gagal memuat pengguna: ${error.message}`);
         } else {
             setUsers(data || []);
         }
@@ -33,9 +35,9 @@ const AdminUsersPage: React.FC = () => {
         const { error } = await supabase.rpc('update_user_role', { target_user_id: targetUserId, new_role: newRole });
         if (error) {
             console.error('Error updating role:', error);
-            alert(`Gagal mengubah peran: ${error.message}`);
+            toast.error(`Gagal mengubah peran: ${error.message}`);
         } else {
-            alert('Peran pengguna berhasil diubah.');
+            toast.success('Peran pengguna berhasil diubah.');
             fetchUsers();
         }
         setActionLoading(prev => ({ ...prev, [targetUserId]: false }));
@@ -47,9 +49,9 @@ const AdminUsersPage: React.FC = () => {
             const { error } = await supabase.rpc('delete_user_by_admin', { target_user_id: targetUserId });
             if (error) {
                 console.error('Error deleting user:', error);
-                alert(`Gagal menghapus pengguna: ${error.message}`);
+                toast.error(`Gagal menghapus pengguna: ${error.message}`);
             } else {
-                alert('Pengguna berhasil dihapus.');
+                toast.success('Pengguna berhasil dihapus.');
                 fetchUsers();
             }
             setActionLoading(prev => ({ ...prev, [targetUserId]: false }));

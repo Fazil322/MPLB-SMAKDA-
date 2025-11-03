@@ -1,3 +1,4 @@
+
 export type Json =
   | string
   | number
@@ -15,18 +16,21 @@ export interface Database {
           created_at: string
           id: string
           title: string
+          is_pinned: boolean
         }
         Insert: {
           content: string
           created_at?: string
           id?: string
           title: string
+          is_pinned?: boolean
         }
         Update: {
           content?: string
           created_at?: string
           id?: string
           title?: string
+          is_pinned?: boolean
         }
         Relationships: []
       }
@@ -160,7 +164,10 @@ export interface Database {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_dashboard_stats: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never
@@ -189,4 +196,11 @@ export type ManagedUser = {
     full_name: string | null;
     user_role: string | null;
     created_at: string;
+};
+
+// New type for Admin Dashboard stats
+export type DashboardStats = {
+    total_users: number;
+    active_polls: number;
+    total_files: number;
 };
