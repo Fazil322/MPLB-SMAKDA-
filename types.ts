@@ -1,4 +1,3 @@
-
 export type Json =
   | string
   | number
@@ -175,8 +174,8 @@ export interface Database {
         Returns: {
           id: string
           email: string
-          full_name: string | null
-          user_role: string | null
+          full_name: string
+          user_role: string
           created_at: string
         }[]
       }
@@ -221,9 +220,9 @@ export type Vote = Database['public']['Tables']['votes']['Row'];
 // New type for user management page
 export type ManagedUser = {
     id: string;
-    email: string | undefined;
-    full_name: string | null;
-    user_role: string | null;
+    email: string;
+    full_name: string;
+    user_role: string;
     created_at: string;
 };
 

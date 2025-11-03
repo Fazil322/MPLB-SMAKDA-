@@ -35,6 +35,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- BAGIAN 2: Fungsi Manajemen Peran (PENTING)
 -- Fungsi ini sangat krusial untuk keamanan. Fungsinya adalah untuk memeriksa
 -- apakah pengguna yang sedang login memiliki peran 'admin'.
+-- Meskipun tidak lagi digunakan di RLS, fungsi ini tetap digunakan di fungsi RPC lainnya.
 CREATE OR REPLACE FUNCTION is_admin()
 RETURNS BOOLEAN LANGUAGE sql STABLE AS $$
   SELECT auth.jwt()->'app_metadata'->>'user_role' = 'admin'
@@ -54,8 +55,12 @@ CREATE TABLE announcements (
   is_pinned BOOLEAN DEFAULT false NOT NULL
 );
 ALTER TABLE announcements ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow public read access" ON announcements;
+DROP POLICY IF EXISTS "Allow only admins to manage" ON announcements;
 CREATE POLICY "Allow public read access" ON announcements FOR SELECT USING (true);
-CREATE POLICY "Allow only admins to manage" ON announcements FOR ALL USING (is_admin()) WITH CHECK (is_admin());
+CREATE POLICY "Allow only admins to manage" ON announcements FOR ALL 
+USING (auth.jwt()->'app_metadata'->>'user_role' = 'admin') 
+WITH CHECK (auth.jwt()->'app_metadata'->>'user_role' = 'admin');
 
 -- Tabel Polling
 CREATE TABLE polls (
@@ -65,8 +70,12 @@ CREATE TABLE polls (
   is_active BOOLEAN DEFAULT true NOT NULL
 );
 ALTER TABLE polls ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow public read access" ON polls;
+DROP POLICY IF EXISTS "Allow only admins to manage" ON polls;
 CREATE POLICY "Allow public read access" ON polls FOR SELECT USING (true);
-CREATE POLICY "Allow only admins to manage" ON polls FOR ALL USING (is_admin()) WITH CHECK (is_admin());
+CREATE POLICY "Allow only admins to manage" ON polls FOR ALL 
+USING (auth.jwt()->'app_metadata'->>'user_role' = 'admin') 
+WITH CHECK (auth.jwt()->'app_metadata'->>'user_role' = 'admin');
 
 -- Tabel Opsi Polling
 CREATE TABLE poll_options (
@@ -77,8 +86,12 @@ CREATE TABLE poll_options (
   vote_count INT DEFAULT 0 NOT NULL
 );
 ALTER TABLE poll_options ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow public read access" ON poll_options;
+DROP POLICY IF EXISTS "Allow only admins to manage" ON poll_options;
 CREATE POLICY "Allow public read access" ON poll_options FOR SELECT USING (true);
-CREATE POLICY "Allow only admins to manage" ON poll_options FOR ALL USING (is_admin()) WITH CHECK (is_admin());
+CREATE POLICY "Allow only admins to manage" ON poll_options FOR ALL 
+USING (auth.jwt()->'app_metadata'->>'user_role' = 'admin') 
+WITH CHECK (auth.jwt()->'app_metadata'->>'user_role' = 'admin');
 
 -- Tabel Berkas
 CREATE TABLE files (
@@ -91,8 +104,12 @@ CREATE TABLE files (
   file_type TEXT NOT NULL
 );
 ALTER TABLE files ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow public read access" ON files;
+DROP POLICY IF EXISTS "Allow only admins to manage" ON files;
 CREATE POLICY "Allow public read access" ON files FOR SELECT USING (true);
-CREATE POLICY "Allow only admins to manage" ON files FOR ALL USING (is_admin()) WITH CHECK (is_admin());
+CREATE POLICY "Allow only admins to manage" ON files FOR ALL 
+USING (auth.jwt()->'app_metadata'->>'user_role' = 'admin') 
+WITH CHECK (auth.jwt()->'app_metadata'->>'user_role' = 'admin');
 
 -- Tabel Suara (untuk mencegah vote ganda)
 CREATE TABLE votes (
@@ -104,6 +121,8 @@ CREATE TABLE votes (
   UNIQUE(user_id, poll_id) -- Memastikan pengguna hanya bisa vote sekali per polling
 );
 ALTER TABLE votes ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow users to insert their own vote" ON votes;
+DROP POLICY IF EXISTS "Allow users to see their own votes" ON votes;
 CREATE POLICY "Allow users to insert their own vote" ON votes FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Allow users to see their own votes" ON votes FOR SELECT USING (auth.uid() = user_id);
 
@@ -149,11 +168,16 @@ $$ LANGUAGE plpgsql;
 -- pada dasbor Supabase Anda SEBELUM menjalankan kebijakan ini.
 
 -- Izinkan akses baca publik untuk file
+DROP POLICY IF EXISTS "Allow public read access" ON storage.objects;
 CREATE POLICY "Allow public read access" ON storage.objects FOR SELECT USING (bucket_id = 'mplb_files');
+
 -- Izinkan admin untuk mengunggah, memperbarui, dan menghapus
-CREATE POLICY "Allow admins to upload" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'mplb_files' AND is_admin());
-CREATE POLICY "Allow admins to update" ON storage.objects FOR UPDATE USING (bucket_id = 'mplb_files' AND is_admin());
-CREATE POLICY "Allow admins to delete" ON storage.objects FOR DELETE USING (bucket_id = 'mplb_files' AND is_admin());
+DROP POLICY IF EXISTS "Allow admins to upload" ON storage.objects;
+DROP POLICY IF EXISTS "Allow admins to update" ON storage.objects;
+DROP POLICY IF EXISTS "Allow admins to delete" ON storage.objects;
+CREATE POLICY "Allow admins to upload" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'mplb_files' AND auth.jwt()->'app_metadata'->>'user_role' = 'admin');
+CREATE POLICY "Allow admins to update" ON storage.objects FOR UPDATE USING (bucket_id = 'mplb_files' AND auth.jwt()->'app_metadata'->>'user_role' = 'admin');
+CREATE POLICY "Allow admins to delete" ON storage.objects FOR DELETE USING (bucket_id = 'mplb_files' AND auth.jwt()->'app_metadata'->>'user_role' = 'admin');
 
 
 -- BAGIAN 7: Fungsi Manajemen Pengguna
@@ -181,9 +205,9 @@ BEGIN
     RETURN QUERY
     SELECT
         u.id,
-        u.email,
-        u.raw_app_meta_data->>'full_name' AS full_name,
-        u.raw_app_meta_data->>'user_role' AS user_role,
+        COALESCE(u.email, ''::text) AS email,
+        COALESCE(u.raw_app_meta_data->>'full_name', 'No Name'::text) AS full_name,
+        COALESCE(u.raw_app_meta_data->>'user_role', 'student'::text) AS user_role,
         u.created_at
     FROM auth.users u
     ORDER BY u.created_at DESC;
