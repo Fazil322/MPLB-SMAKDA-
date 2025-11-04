@@ -11,9 +11,9 @@ import toast from 'react-hot-toast';
 
 const StatCard: React.FC<{ icon: React.ReactNode; title: string; value: number | string; link: string; }> = ({ icon, title, value, link }) => (
     <Link to={link} className="block">
-        <Card className="hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+        <Card className="hover:shadow-2xl transform hover:scale-105 transition-all duration-300">
             <CardContent className="pt-6 flex items-center space-x-4">
-                <div className="p-3 bg-brand-pink-100 rounded-lg text-brand-pink-600">{icon}</div>
+                <div className="p-4 bg-gradient-to-br from-brand-pink-100 to-fuchsia-100 rounded-xl text-brand-pink-600 shadow-md">{icon}</div>
                 <div>
                     <p className="text-sm font-medium text-gray-500">{title}</p>
                     <p className="text-2xl font-bold text-gray-800">{value}</p>
@@ -74,11 +74,11 @@ const AdminDashboardPage: React.FC = () => {
 
     return (
         <div className="space-y-6">
-            <Card className="bg-gradient-to-br from-brand-pink-500 to-fuchsia-500 text-white">
+            <Card className="bg-gradient-to-br from-brand-pink-500 via-fuchsia-500 to-purple-500 text-white shadow-2xl">
                 <CardContent className="pt-6">
-                    <h1 className="text-3xl font-bold">Selamat Datang, Admin!</h1>
-                    <p className="mt-2 text-pink-100">Anda masuk sebagai {userEmail}</p>
-                    <p className="mt-1 text-pink-100">Kelola semua kebutuhan jurusan MPLB dari sini.</p>
+                    <h1 className="text-3xl font-bold">Selamat Datang, Admin! 👨‍💼</h1>
+                    <p className="mt-2 text-pink-50">Anda masuk sebagai {userEmail}</p>
+                    <p className="mt-1 text-pink-50">Kelola semua kebutuhan jurusan MPLB dari sini.</p>
                 </CardContent>
             </Card>
 
