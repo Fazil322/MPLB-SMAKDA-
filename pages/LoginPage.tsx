@@ -47,13 +47,13 @@ const LoginPage: React.FC = () => {
             backgroundSize: '20px 20px'
         }}
     >
-      <Card className="w-full max-w-sm animate-fade-in-up">
+      <Card className="w-full max-w-sm animate-fade-in-up backdrop-blur-sm bg-white/95">
          <CardHeader>
            <div className="text-center">
-                <div className="inline-block bg-brand-pink-500 p-3 rounded-2xl mb-4">
+                <div className="inline-block bg-gradient-to-br from-brand-pink-500 to-fuchsia-500 p-4 rounded-2xl mb-4 shadow-lg transform hover:scale-110 transition-transform duration-300">
                      <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M12 2v20"/><path d="M12 18a4 4 0 0 0 0-12"/><path d="M12 6a4 4 0 0 1 0 12"/></svg>
                 </div>
-                <h1 className="text-3xl font-bold text-brand-pink-600">Login Siswa</h1>
+                <h1 className="text-3xl font-bold bg-gradient-to-r from-brand-pink-600 to-fuchsia-600 bg-clip-text text-transparent">Login Siswa</h1>
                 <p className="text-gray-500 mt-2">Masuk untuk mengakses portal MPLB Hub</p>
             </div>
         </CardHeader>
@@ -102,7 +102,7 @@ const LoginPage: React.FC = () => {
           0% { opacity: 0; transform: translateY(20px); }
           100% { opacity: 1; transform: translateY(0); }
         }
-        .animate-fade-in-up { animation: fade-in-up 0.5s ease-out forwards; }
+        .animate-fade-in-up { animation: fade-in-up 0.6s ease-out forwards; }
       `}</style>
     </div>
   );

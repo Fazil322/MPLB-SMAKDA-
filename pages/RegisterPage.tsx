@@ -48,11 +48,19 @@ const RegisterPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-brand-pink-50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-sm animate-fade-in-up">
+    <div className="min-h-screen bg-brand-pink-50 flex items-center justify-center p-4"
+        style={{
+            backgroundImage: `
+                radial-gradient(circle at 1px 1px, #fecddf 1px, transparent 0),
+                radial-gradient(circle at 10px 10px, #fecddf 1px, transparent 0)
+            `,
+            backgroundSize: '20px 20px'
+        }}
+    >
+      <Card className="w-full max-w-sm animate-fade-in-up backdrop-blur-sm bg-white/95">
         <CardHeader>
            <div className="text-center">
-               <h1 className="text-3xl font-bold text-brand-pink-600">Buat Akun Siswa</h1>
+               <h1 className="text-3xl font-bold bg-gradient-to-r from-brand-pink-600 to-fuchsia-600 bg-clip-text text-transparent">Buat Akun Siswa</h1>
                <p className="text-gray-500 mt-2">Daftar untuk mengakses portal siswa</p>
            </div>
         </CardHeader>
@@ -109,7 +117,7 @@ const RegisterPage: React.FC = () => {
           0% { opacity: 0; transform: translateY(20px); }
           100% { opacity: 1; transform: translateY(0); }
         }
-        .animate-fade-in-up { animation: fade-in-up 0.5s ease-out forwards; }
+        .animate-fade-in-up { animation: fade-in-up 0.6s ease-out forwards; }
       `}</style>
     </div>
   );
